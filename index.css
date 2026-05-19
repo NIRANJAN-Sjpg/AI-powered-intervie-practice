@@ -1,0 +1,123 @@
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ResponsiveContainer, Tooltip
+} from 'recharts'
+
+const ScoreRing = ({ score, label, color }) => {
+  const pct = (score / 10) * 100
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative w-16 h-16">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+          <circle
+            cx="18" cy="18" r="15.9" fill="none"
+            stroke={color} strokeWidth="3"
+            strokeDasharray={`${pct} 100`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-800">
+          {score}
+        </span>
+      </div>
+      <span className="text-xs text-gray-500 font-medium">{label}</span>
+    </div>
+  )
+}
+
+export default function ScoreCard({ feedback, question, transcript }) {
+  if (!feedback) return null
+
+  const { clarity_score, content_score, confidence_score, overall_score,
+    strengths, improvements, model_answer } = feedback
+
+  const radarData = [
+    { subject: 'Clarity', score: clarity_score },
+    { subject: 'Content', score: content_score },
+    { subject: 'Confidence', score: confidence_score },
+    { subject: 'Overall', score: overall_score },
+  ]
+
+  const overallColor = overall_score >= 7 ? '#22c55e' : overall_score >= 5 ? '#f59e0b' : '#ef4444'
+  const overallLabel = overall_score >= 7 ? 'Great' : overall_score >= 5 ? 'Average' : 'Needs Work'
+
+  return (
+    <div className="space-y-6">
+      {/* Overall banner */}
+      <div className="card text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+        <p className="text-sm text-gray-500 mb-1">Overall Score</p>
+        <p className="text-6xl font-black" style={{ color: overallColor }}>{overall_score}</p>
+        <p className="text-lg font-semibold mt-1" style={{ color: overallColor }}>{overallLabel}</p>
+        <p className="text-sm text-gray-500 mt-1">out of 10</p>
+      </div>
+
+      {/* Score rings */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-700 mb-4 text-center">Score Breakdown</h3>
+        <div className="flex justify-around">
+          <ScoreRing score={clarity_score}    label="Clarity"    color="#3b82f6" />
+          <ScoreRing score={content_score}    label="Content"    color="#8b5cf6" />
+          <ScoreRing score={confidence_score} label="Confidence" color="#f59e0b" />
+          <ScoreRing score={overall_score}    label="Overall"    color={overallColor} />
+        </div>
+      </div>
+
+      {/* Radar Chart */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-700 mb-4 text-center">Skill Radar</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <RadarChart data={radarData}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+            <PolarRadiusAxis domain={[0, 10]} tick={false} />
+            <Radar name="Score" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
+            <Tooltip formatter={(v) => [`${v}/10`]} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Strengths & Improvements */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card border-green-100 bg-green-50">
+          <h3 className="font-semibold text-green-800 mb-3">💪 Strengths</h3>
+          <ul className="space-y-2">
+            {(strengths || []).map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-green-900">
+                <span className="mt-0.5 text-green-500 flex-shrink-0">✓</span>
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="card border-amber-100 bg-amber-50">
+          <h3 className="font-semibold text-amber-800 mb-3">📈 Improve</h3>
+          <ul className="space-y-2">
+            {(improvements || []).map((imp, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-amber-900">
+                <span className="mt-0.5 text-amber-500 flex-shrink-0">→</span>
+                {imp}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Transcript */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-700 mb-2">📝 Your Transcript</h3>
+        <p className="text-gray-600 text-sm bg-gray-50 rounded-lg p-3 leading-relaxed">
+          {transcript || 'No transcript available.'}
+        </p>
+      </div>
+
+      {/* Model Answer */}
+      {model_answer && (
+        <div className="card border-blue-100 bg-blue-50">
+          <h3 className="font-semibold text-blue-800 mb-2">🏆 Model Answer</h3>
+          <p className="text-blue-900 text-sm leading-relaxed">{model_answer}</p>
+        </div>
+      )}
+    </div>
+  )
+}

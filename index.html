@@ -1,0 +1,126 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
+
+const StatCard = ({ label, value, icon, color }) => (
+  <div className="card flex items-center gap-4">
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${color}`}>{icon}</div>
+    <div>
+      <p className="text-2xl font-black text-gray-900">{value}</p>
+      <p className="text-sm text-gray-500">{label}</p>
+    </div>
+  </div>
+)
+
+export default function Dashboard() {
+  const { user } = useAuth()
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/stats/')
+      .then(res => setStats(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+    </div>
+  )
+
+  const chartData = (stats?.recent || [])
+    .slice().reverse()
+    .map((a, i) => ({ name: `#${i + 1}`, score: a.overall_score }))
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900">
+          Welcome back, {user?.first_name || user?.username}! 👋
+        </h1>
+        <p className="text-gray-500 mt-1">Track your interview performance and keep improving.</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Total Attempts"  value={stats?.total_attempts ?? 0} icon="🎯" color="bg-blue-50" />
+        <StatCard label="Avg Overall"     value={`${stats?.avg_overall ?? 0}/10`} icon="⭐" color="bg-yellow-50" />
+        <StatCard label="Avg Clarity"     value={`${stats?.avg_clarity ?? 0}/10`} icon="💬" color="bg-green-50" />
+        <StatCard label="Avg Confidence"  value={`${stats?.avg_confidence ?? 0}/10`} icon="💪" color="bg-purple-50" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Progress chart */}
+        <div className="card lg:col-span-2">
+          <h2 className="font-bold text-gray-800 mb-4">📈 Your Progress</h2>
+          {chartData.length > 1 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v) => [`${v}/10`, 'Score']} />
+                <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+              Complete more attempts to see your progress chart
+            </div>
+          )}
+        </div>
+
+        {/* Quick start */}
+        <div className="card flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-gray-800 mb-3">🚀 Quick Start</h2>
+            <p className="text-gray-500 text-sm mb-4">
+              Pick a role, get a question, record your answer, and get instant AI feedback.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-600 mb-6">
+              <li>✅ Software Engineer questions</li>
+              <li>✅ HR round questions</li>
+              <li>✅ BPO / customer support</li>
+              <li>✅ Data analyst questions</li>
+            </ul>
+          </div>
+          <Link to="/practice" className="btn-primary text-center block">
+            Start Practicing →
+          </Link>
+        </div>
+      </div>
+
+      {/* Recent attempts */}
+      {stats?.recent?.length > 0 && (
+        <div className="card mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-gray-800">🕐 Recent Attempts</h2>
+            <Link to="/history" className="text-sm text-blue-600 hover:underline">View all →</Link>
+          </div>
+          <div className="space-y-3">
+            {stats.recent.map((a) => (
+              <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{a.question}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {a.role} · {new Date(a.created_at).toLocaleDateString('en-IN')}
+                  </p>
+                </div>
+                <span className={`text-lg font-black ${
+                  a.overall_score >= 7 ? 'text-green-600' :
+                  a.overall_score >= 5 ? 'text-yellow-600' : 'text-red-500'
+                }`}>
+                  {a.overall_score}/10
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
